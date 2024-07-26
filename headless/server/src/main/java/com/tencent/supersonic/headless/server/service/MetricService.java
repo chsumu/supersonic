@@ -15,6 +15,7 @@ import com.tencent.supersonic.headless.api.pojo.request.QueryStructReq;
 import com.tencent.supersonic.headless.api.pojo.response.MetricResp;
 import com.tencent.supersonic.headless.api.pojo.response.ModelResp;
 import com.tencent.supersonic.headless.api.pojo.MetaFilter;
+import com.tencent.supersonic.headless.server.persistence.dataobject.MetricDO;
 import com.tencent.supersonic.headless.server.pojo.MetricsFilter;
 
 import java.util.List;
@@ -31,6 +32,8 @@ public interface MetricService {
     void batchUpdateStatus(MetaBatchReq metaBatchReq, User user);
 
     void batchVector(List<Long> metricIds, User user);
+
+    void updateVector(Long modelId, Integer status, Integer isVector, User user);
 
     void batchPublish(List<Long> metricIds, User user);
 

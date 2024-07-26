@@ -3,6 +3,7 @@ package com.tencent.supersonic.common.service.impl;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.tencent.supersonic.common.service.EmbeddingService;
+import com.tencent.supersonic.common.util.MD5Util;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -21,17 +22,14 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -58,7 +56,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 if (existSegment) {
                     continue;
                 }
-                embeddingStore.add(embedding, query);
+                if (embeddingStore instanceof MilvusEmbeddingStore){
+                    ((MilvusEmbeddingStore) embeddingStore).add(MD5Util.getMD5(question), embedding, query);
+                }else {
+                    embeddingStore.add(embedding, query);
+                }
             } catch (Exception e) {
                 log.error("embeddingModel embed error question: {}, embeddingStore: {}", question,
                         embeddingStore.getClass().getSimpleName(), e);
@@ -104,9 +106,21 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                     Filter filter = filterBuilder.isIn(queryIds);
                     inMemoryEmbeddingStore.removeAll(filter);
                 }
-            } else {
-                throw new RuntimeException("Not supported yet.");
+            }else if (embeddingStore instanceof MilvusEmbeddingStore){
+                MilvusEmbeddingStore milvusEmbeddingStore = (MilvusEmbeddingStore) embeddingStore;
+                Collection<String> queryIds = queries.stream().map(textSegment -> MD5Util.getMD5(textSegment.text()))
+                        .filter(Objects::nonNull).collect(Collectors.toList());
+                if (CollectionUtils.isNotEmpty(queryIds)) {
+                    milvusEmbeddingStore.removeAll(queryIds);
+                }
+
             }
+            queries.forEach(textSegment -> {
+                String queryId = TextSegmentConvert.getQueryId(textSegment);
+                if (StringUtils.isNotBlank(queryId)){
+                    cache.invalidate(queryId);
+                }
+            });
         } catch (Exception e) {
             log.error("deleteQuery error,collectionName:{},queries:{}", collectionName, queries);
         }

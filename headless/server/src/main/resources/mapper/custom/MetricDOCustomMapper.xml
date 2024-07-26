@@ -204,7 +204,13 @@
     <select id="queryMetrics" resultMap="ResultMapWithBLOBs">
         select *
         from s2_metric
-        where status != 3
+        where
+        <if test="status == null">
+            status != 3
+        </if>
+        <if test="status != null">
+            status = #{status}
+        </if>
         <if test="isPublish != null">
             and is_publish = #{isPublish}
         </if>
@@ -242,5 +248,26 @@
         </if>
     </select>
 
+    <update id="updateMetricByMid" >
+        update s2_metric
+        <set>
+            <if test="status != null">
+                status = #{status,jdbcType=INTEGER},
+            </if>
+            <if test="isVector != null">
+                is_vector = #{isVector,jdbcType=INTEGER},
+            </if>
+            <if test="isPublish != null">
+                is_publish = #{isPublish,jdbcType=INTEGER},
+            </if>
+            <if test="updatedAt != null">
+                updated_at = #{updatedAt,jdbcType=TIMESTAMP},
+            </if>
+            <if test="updatedBy != null">
+                updated_by = #{updatedBy,jdbcType=VARCHAR},
+            </if>
+        </set>
+        where status != 3 and model_id = #{modelId,jdbcType=BIGINT}
+    </update>
 
 </mapper>

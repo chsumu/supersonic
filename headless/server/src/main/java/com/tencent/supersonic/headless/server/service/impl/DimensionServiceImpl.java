@@ -105,6 +105,7 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
         checkExist(Lists.newArrayList(dimensionReq));
         dimensionReq.createdBy(user.getName());
         DimensionDO dimensionDO = DimensionConverter.convert2DimensionDO(dimensionReq);
+        dimensionDO.setIsVector(1);
         dimensionRepository.createDimension(dimensionDO);
         sendEventBatch(Lists.newArrayList(dimensionDO), EventType.ADD);
         return DimensionConverter.convert2DimensionResp(dimensionDO);
@@ -130,7 +131,11 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
         }
         List<DimensionDO> dimensionDOS = dimensionToInsert.stream().peek(dimension ->
                         dimension.createdBy(user.getName()))
-                .map(DimensionConverter::convert2DimensionDO)
+                .map( dimension -> {
+                    DimensionDO dimensionDO = DimensionConverter.convert2DimensionDO(dimension);
+                    dimensionDO.setIsVector(1);
+                    return dimensionDO;
+                })
                 .collect(Collectors.toList());
         dimensionRepository.createDimensionBatch(dimensionDOS);
         sendEventBatch(dimensionDOS, EventType.ADD);
@@ -162,20 +167,31 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
         if (CollectionUtils.isEmpty(dimensionDOS)) {
             return;
         }
-        dimensionDOS = dimensionDOS.stream()
-                .peek(dimensionDO -> {
-                    dimensionDO.setStatus(metaBatchReq.getStatus());
-                    dimensionDO.setUpdatedAt(new Date());
-                    dimensionDO.setUpdatedBy(user.getName());
-                })
-                .collect(Collectors.toList());
-        dimensionRepository.batchUpdateStatus(dimensionDOS);
+
+
         if (StatusEnum.OFFLINE.getCode().equals(metaBatchReq.getStatus())
                 || StatusEnum.DELETED.getCode().equals(metaBatchReq.getStatus())) {
+            dimensionDOS = dimensionDOS.stream()
+                    .peek(dimensionDO -> {
+                        dimensionDO.setStatus(metaBatchReq.getStatus());
+                        dimensionDO.setUpdatedAt(new Date());
+                        dimensionDO.setUpdatedBy(user.getName());
+                        dimensionDO.setIsVector(0);
+                    })
+                    .collect(Collectors.toList());
             sendEventBatch(dimensionDOS, EventType.DELETE);
         } else if (StatusEnum.ONLINE.getCode().equals(metaBatchReq.getStatus())) {
+            dimensionDOS = dimensionDOS.stream()
+                    .peek(dimensionDO -> {
+                        dimensionDO.setStatus(metaBatchReq.getStatus());
+                        dimensionDO.setUpdatedAt(new Date());
+                        dimensionDO.setUpdatedBy(user.getName());
+                        dimensionDO.setIsVector(1);
+                    })
+                    .collect(Collectors.toList());
             sendEventBatch(dimensionDOS, EventType.ADD);
         }
+        dimensionRepository.batchUpdateStatus(dimensionDOS);
     }
 
     @Override
@@ -456,6 +472,7 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
     public DataEvent getDataEvent() {
         DimensionFilter dimensionFilter = new DimensionFilter();
         dimensionFilter.setIsVector(0);
+        dimensionFilter.setStatus(1);
         List<DimensionDO> dimensionDOS = queryDimension(dimensionFilter);
         return getDataEvent(dimensionDOS, EventType.ADD);
     }
@@ -492,4 +509,32 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
         dimensionRepository.batchVector(dimensionDOS);
     }
 
+    @Override
+    public void batchUnVector(List<Long> ids, User user) {
+        if (ids.isEmpty()){
+            return;
+        }
+        Date date = new Date();
+        List<DimensionDO> dimensionDOS = ids.stream().map(item -> {
+            DimensionDO dimensionDO = new DimensionDO();
+            dimensionDO.setId(item);
+            dimensionDO.setIsVector(0);
+            dimensionDO.setUpdatedAt(date);
+            dimensionDO.setUpdatedBy(user.getName());
+            return dimensionDO;
+        }).collect(Collectors.toList());
+
+        dimensionRepository.batchVector(dimensionDOS);
+    }
+
+    @Override
+    public void updateVector(Long modelId,Integer status, Integer isVector, User user) {
+        DimensionDO dimensionDO = new DimensionDO();
+        dimensionDO.setModelId(modelId);
+        dimensionDO.setStatus(status);
+        dimensionDO.setIsVector(isVector);
+        dimensionDO.setUpdatedBy(user.getName());
+        dimensionDO.setUpdatedAt(new Date());
+        dimensionRepository.updateDimensionByMid(dimensionDO);
+    }
 }

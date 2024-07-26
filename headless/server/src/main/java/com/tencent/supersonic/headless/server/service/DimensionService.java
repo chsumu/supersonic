@@ -49,4 +49,8 @@ public interface DimensionService {
     DataEvent getDataEvent();
 
     void batchVector(List<Long> ids, User user);
+
+    void batchUnVector(List<Long> ids, User user);
+
+    void updateVector(Long modelId, Integer status, Integer isVector, User user);
 }

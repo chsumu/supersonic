@@ -35,6 +35,7 @@ public class OnePassSCSqlGenStrategy extends SqlGenStrategy {
             + "2.ALWAYS calculate the absolute date range by yourself."
             + "3.DO NOT include date filter in the where clause if not explicitly expressed in the `Question`."
             + "4.ONLY respond with the converted SQL statement.\n"
+            + "5.No need to customize extended query metrics\n"
             + "#Exemplars:\n{{exemplar}}"
             + "#Question:{{question}} #Schema:{{schema}} #SideInfo:{{information}} #SQL:";
 

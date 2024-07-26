@@ -25,4 +25,7 @@ public interface DimensionRepository {
 
     void batchVector(List<DimensionDO> dimensionDOS);
 
+
+    void updateDimensionByMid(DimensionDO dimensionDO);
+
 }

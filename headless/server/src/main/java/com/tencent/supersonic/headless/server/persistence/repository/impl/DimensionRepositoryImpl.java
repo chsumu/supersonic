@@ -61,4 +61,9 @@ public class DimensionRepositoryImpl implements DimensionRepository {
     public void batchVector(List<DimensionDO> dimensionDOS) {
         dimensionDOCustomMapper.batchVector(dimensionDOS);
     }
+
+    @Override
+    public void updateDimensionByMid(DimensionDO dimensionDO) {
+        dimensionDOCustomMapper.updateDimensionByMid(dimensionDO);
+    }
 }

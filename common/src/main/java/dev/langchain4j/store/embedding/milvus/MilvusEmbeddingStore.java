@@ -16,10 +16,14 @@ import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.SearchParam;
+import io.milvus.param.highlevel.dml.DeleteIdsParam;
 import io.milvus.response.SearchResultsWrapper;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -126,6 +130,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         return id;
     }
 
+    public void add(String id, Embedding embedding, TextSegment textSegment) {
+        addInternal(id, embedding, textSegment);
+    }
+
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = generateRandomIds(embeddings.size());
         addAllInternal(ids, embeddings, null);
@@ -187,6 +195,19 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             flush(this.milvusClient, this.collectionName);
         }
     }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        if (ids.isEmpty()){
+            return;
+        }
+        DeleteIdsParam deleteIdsParam = DeleteIdsParam.newBuilder()
+                .withCollectionName(this.collectionName)
+                .withPrimaryIds(ids.stream().collect(Collectors.toList()))
+                .build();
+        milvusClient.delete(deleteIdsParam);
+    }
+
 
     public static Builder builder() {
         return new Builder();

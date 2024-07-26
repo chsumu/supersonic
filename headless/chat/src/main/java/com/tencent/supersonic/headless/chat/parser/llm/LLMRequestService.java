@@ -240,7 +240,7 @@ public class LLMRequestService {
         List<SchemaElement> schemaElements = matchedElements.stream()
                 .filter(schemaElementMatch -> {
                     SchemaElementType elementType = schemaElementMatch.getElement().getType();
-                    return SchemaElementType.METRIC.equals(elementType);
+                    return SchemaElementType.METRIC.equals(elementType) && schemaElementMatch.getSimilarity() > 0.9;
                 })
                 .map(schemaElementMatch -> {
                     return schemaElementMatch.getElement();

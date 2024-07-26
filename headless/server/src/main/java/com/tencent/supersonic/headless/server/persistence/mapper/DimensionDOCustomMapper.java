@@ -21,4 +21,6 @@ public interface DimensionDOCustomMapper {
 
     void batchVector(List<DimensionDO> dimensionDOS);
 
+    int updateDimensionByMid(DimensionDO dimensionDO);
+
 }

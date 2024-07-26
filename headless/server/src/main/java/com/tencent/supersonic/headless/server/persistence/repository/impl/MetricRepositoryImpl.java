@@ -58,6 +58,11 @@ public class MetricRepositoryImpl implements MetricRepository {
     }
 
     @Override
+    public void updateVector(MetricDO metricDO) {
+        metricDOCustomMapper.updateMetricByMid(metricDO);
+    }
+
+    @Override
     public void batchPublish(List<MetricDO> metricDOS) {
         metricDOCustomMapper.batchPublish(metricDOS);
     }

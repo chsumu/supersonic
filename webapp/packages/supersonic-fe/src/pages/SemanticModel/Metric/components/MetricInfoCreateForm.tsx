@@ -68,7 +68,6 @@ const MetricInfoCreateForm: React.FC<CreateFormProps> = ({
   const isEdit = !!metricItem?.id;
   const domainId = metricItem?.domainId;
   const modelId = metricItem?.modelId;
-  const [currentStep, setCurrentStep] = useState(0);
   const formValRef = useRef({} as any);
   const [form] = Form.useForm();
   const updateFormVal = (val: any) => {
@@ -238,7 +237,6 @@ const MetricInfoCreateForm: React.FC<CreateFormProps> = ({
       bizName,
       description,
       sensitiveLevel,
-      typeParams,
       isTag,
       dataFormat,
       dataFormatType,

@@ -69,6 +69,9 @@ public class MetaEmbeddingTask implements CommandLineRunner {
         long startTime = System.currentTimeMillis();
         try {
             List<DataItem> metricDataItems = metricService.getDataEvent().getDataItems();
+            if (metricDataItems.isEmpty()){
+                return;
+            }
 
             embeddingService.addQuery(embeddingConfig.getMetaCollectionName(),
                     TextSegmentConvert.convertToEmbedding(metricDataItems));

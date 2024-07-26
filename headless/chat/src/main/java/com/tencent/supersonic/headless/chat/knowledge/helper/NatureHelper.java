@@ -121,7 +121,8 @@ public class NatureHelper {
         if (CollectionUtils.isEmpty(dataSetIds)) {
             return Lists.newArrayList();
         }
-        return dataSetIds.stream().map(dataSetId -> String.valueOf(changeModel2DataSet(nature, dataSetId)))
+        return dataSetIds.stream().map(dataSetId ->
+                        String.valueOf(changeModel2DataSet(nature, dataSetId)))
                 .collect(Collectors.toList());
     }
 

@@ -20,6 +20,8 @@ public interface MetricRepository {
 
     void batchVector(List<MetricDO> metricDOS);
 
+    void updateVector(MetricDO metricDO);
+
     void batchPublish(List<MetricDO> metricDOS);
 
     void batchUnPublish(List<MetricDO> metricDOS);

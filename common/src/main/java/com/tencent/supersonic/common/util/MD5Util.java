@@ -1,7 +1,9 @@
 package com.tencent.supersonic.common.util;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,6 +16,29 @@ public class MD5Util {
     public static final int BIT64 = 64;
     public static final int BIT128 = 128;
     public static final int BIT256 = 256;
+
+    public static String getMD5(String input) {
+        try {
+            // 创建一个MD5算法对象
+            MessageDigest md = MessageDigest.getInstance("MD5");
+
+            // 计算MD5摘要
+            byte[] messageDigest = md.digest(input.getBytes());
+
+            // 将字节数组转换为表示十六进制值的字符串
+            BigInteger no = new BigInteger(1, messageDigest);
+            String hashText = no.toString(16);
+
+            // 如果十六进制字符串的长度不足32位，需要在前面补0
+            while (hashText.length() < 32) {
+                hashText = "0" + hashText;
+            }
+
+            return hashText;
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /**
      * MD5加密

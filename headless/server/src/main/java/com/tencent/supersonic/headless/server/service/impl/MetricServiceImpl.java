@@ -139,6 +139,8 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         MetricCheckUtils.checkParam(metricReq);
         metricReq.createdBy(user.getName());
         MetricDO metricDO = MetricConverter.convert2MetricDO(metricReq);
+        metricDO.setIsVector(1);
+//        metricDO.setIsPublish(1);
         metricRepository.createMetric(metricDO);
         sendEventBatch(Lists.newArrayList(metricDO), EventType.ADD);
         return MetricConverter.convert2MetricResp(metricDO);
@@ -162,7 +164,12 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
             return;
         }
         List<MetricDO> metricDOS = metricToInsert.stream().peek(metric -> metric.createdBy(user.getName()))
-                .map(MetricConverter::convert2MetricDO).collect(Collectors.toList());
+                .map( metric -> {
+                    MetricDO metricDO = MetricConverter.convert2MetricDO(metric);
+//                    metricDO.setIsPublish(1);
+                    metricDO.setIsVector(1);
+                    return metricDO;
+                }).collect(Collectors.toList());
         metricRepository.createMetricBatch(metricDOS);
         sendEventBatch(metricDOS, EventType.ADD);
     }
@@ -194,20 +201,30 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         if (CollectionUtils.isEmpty(metricDOS)) {
             return;
         }
-        metricDOS = metricDOS.stream()
-                .peek(metricDO -> {
-                    metricDO.setStatus(metaBatchReq.getStatus());
-                    metricDO.setUpdatedAt(new Date());
-                    metricDO.setUpdatedBy(user.getName());
-                })
-                .collect(Collectors.toList());
-        metricRepository.batchUpdateStatus(metricDOS);
+
         if (StatusEnum.OFFLINE.getCode().equals(metaBatchReq.getStatus())
                 || StatusEnum.DELETED.getCode().equals(metaBatchReq.getStatus())) {
+            metricDOS = metricDOS.stream()
+                    .peek(metricDO -> {
+                        metricDO.setStatus(metaBatchReq.getStatus());
+                        metricDO.setUpdatedAt(new Date());
+                        metricDO.setUpdatedBy(user.getName());
+                        metricDO.setIsVector(0);
+                    })
+                    .collect(Collectors.toList());
             sendEventBatch(metricDOS, EventType.DELETE);
         } else if (StatusEnum.ONLINE.getCode().equals(metaBatchReq.getStatus())) {
+            metricDOS = metricDOS.stream()
+                    .peek(metricDO -> {
+                        metricDO.setStatus(metaBatchReq.getStatus());
+                        metricDO.setUpdatedAt(new Date());
+                        metricDO.setUpdatedBy(user.getName());
+                        metricDO.setIsVector(1);
+                    })
+                    .collect(Collectors.toList());
             sendEventBatch(metricDOS, EventType.ADD);
         }
+        metricRepository.batchUpdateStatus(metricDOS);
     }
 
     @Override
@@ -226,6 +243,18 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         }).collect(Collectors.toList());
 
         metricRepository.batchVector(metrics);
+    }
+
+    @Override
+    public void updateVector(Long modelId,Integer status, Integer isVector, User user) {
+        MetricDO metricDO = new MetricDO();
+        metricDO.setModelId(modelId);
+        metricDO.setStatus(status);
+        metricDO.setIsVector(isVector);
+        metricDO.setUpdatedBy(user.getName());
+        metricDO.setUpdatedAt(new Date());
+
+        metricRepository.updateVector(metricDO);
     }
 
 
@@ -706,7 +735,8 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
     public DataEvent getDataEvent() {
         MetricsFilter metricsFilter = new MetricsFilter();
         metricsFilter.setIsVector(0);
-        metricsFilter.setIsPublish(1);
+        metricsFilter.setStatus(1);
+//        metricsFilter.setIsPublish(1);
         List<MetricDO> metricDOS = metricRepository.getMetrics(metricsFilter);
         return getDataEvent(metricDOS, EventType.ADD);
     }
