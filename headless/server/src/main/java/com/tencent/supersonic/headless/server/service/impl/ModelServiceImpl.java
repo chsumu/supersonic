@@ -27,10 +27,12 @@ import com.tencent.supersonic.headless.api.pojo.response.ModelResp;
 import com.tencent.supersonic.headless.api.pojo.response.UnAvailableItemResp;
 import com.tencent.supersonic.headless.api.pojo.response.DataSetResp;
 import com.tencent.supersonic.headless.server.persistence.dataobject.DateInfoDO;
+import com.tencent.supersonic.headless.server.persistence.dataobject.MetricDO;
 import com.tencent.supersonic.headless.server.persistence.dataobject.ModelDO;
 import com.tencent.supersonic.headless.server.persistence.repository.DateInfoRepository;
 import com.tencent.supersonic.headless.server.persistence.repository.ModelRepository;
 import com.tencent.supersonic.headless.api.pojo.MetaFilter;
+import com.tencent.supersonic.headless.server.pojo.MetricFilter;
 import com.tencent.supersonic.headless.server.pojo.ModelFilter;
 import com.tencent.supersonic.headless.server.service.DimensionService;
 import com.tencent.supersonic.headless.server.service.DomainService;
@@ -406,11 +408,17 @@ public class ModelServiceImpl implements ModelService {
                     modelDO.setUpdatedBy(user.getName());
                     if (StatusEnum.OFFLINE.getCode().equals(metaBatchReq.getStatus())
                             || StatusEnum.DELETED.getCode().equals(metaBatchReq.getStatus())) {
-                        metricService.sendMetricEventBatch(Lists.newArrayList(modelDO.getId()), EventType.DELETE);
-                        dimensionService.sendDimensionEventBatch(Lists.newArrayList(modelDO.getId()), EventType.DELETE);
+                        ArrayList<Long> modelIds = Lists.newArrayList(modelDO.getId());
+                        metricService.sendMetricEventBatch(modelIds, EventType.DELETE);
+                        metricService.updateVector(modelDO.getId(), 2, 0, User.getFakeUser());
+                        dimensionService.sendDimensionEventBatch(modelIds, EventType.DELETE);
+                        dimensionService.updateVector(modelDO.getId(),2, 0, User.getFakeUser());
                     } else if (StatusEnum.ONLINE.getCode().equals(metaBatchReq.getStatus())) {
-                        metricService.sendMetricEventBatch(Lists.newArrayList(modelDO.getId()), EventType.ADD);
-                        dimensionService.sendDimensionEventBatch(Lists.newArrayList(modelDO.getId()), EventType.ADD);
+                        ArrayList<Long> modelIds = Lists.newArrayList(modelDO.getId());
+                        metricService.sendMetricEventBatch(modelIds, EventType.ADD);
+                        metricService.updateVector(modelDO.getId(),1, 1, User.getFakeUser());
+                        dimensionService.sendDimensionEventBatch(modelIds, EventType.ADD);
+                        dimensionService.updateVector(modelDO.getId(), 1, 1, User.getFakeUser());
                     }
                 })
                 .collect(Collectors.toList());
