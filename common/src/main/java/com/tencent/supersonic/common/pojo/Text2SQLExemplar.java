@@ -21,4 +21,6 @@ public class Text2SQLExemplar {
 
     private String sql;
 
+    private double score;
+
 }

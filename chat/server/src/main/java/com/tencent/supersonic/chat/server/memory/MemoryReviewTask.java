@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@ConditionalOnProperty(name = "s2.task.vector.is-llm-review", havingValue = "true")
 @Component
 @Slf4j
 public class MemoryReviewTask {
@@ -48,7 +50,7 @@ public class MemoryReviewTask {
     @Autowired
     private AgentService agentService;
 
-    @Scheduled(fixedDelay = 60 * 1000)
+    @Scheduled(fixedDelayString = "${s2.task.review.fixed-delay:60000}")
     public void review() {
         memoryService.getMemoriesForLlmReview().stream()
                 .forEach(m -> {

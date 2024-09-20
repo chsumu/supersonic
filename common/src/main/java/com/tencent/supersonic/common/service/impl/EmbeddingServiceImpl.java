@@ -3,6 +3,7 @@ package com.tencent.supersonic.common.service.impl;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.tencent.supersonic.common.service.EmbeddingService;
+import com.tencent.supersonic.common.util.MD5Util;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -21,11 +22,14 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -53,11 +57,19 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             try {
                 EmbeddingModel embeddingModel = ModelProvider.getEmbeddingModel();
                 Embedding embedding = embeddingModel.embed(question).content();
-                boolean existSegment = existSegment(embeddingStore, query, embedding);
-                if (existSegment) {
-                    continue;
+                if (embeddingStore instanceof MilvusEmbeddingStore) {
+                    String id = StringUtils.isEmpty(query.metadata("modelId"))
+                            ? MD5Util.getMD5(question,false, MD5Util.BIT32)
+                            : query.metadata("modelId") + MD5Util.getMD5(question,false, MD5Util.BIT32);
+                    embeddingStore.remove(id);
+                    ((MilvusEmbeddingStore) embeddingStore).add(id, embedding, query);
+                } else {
+                    boolean existSegment = existSegment(embeddingStore, query, embedding);
+                    if (existSegment) {
+                        continue;
+                    }
+                    embeddingStore.add(embedding, query);
                 }
-                embeddingStore.add(embedding, query);
             } catch (Exception e) {
                 log.error("embeddingModel embed error question: {}, embeddingStore: {}", question,
                         embeddingStore.getClass().getSimpleName(), e);
@@ -103,8 +115,18 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                     Filter filter = filterBuilder.isIn(queryIds);
                     inMemoryEmbeddingStore.removeAll(filter);
                 }
-            } else {
-                throw new RuntimeException("Not supported yet.");
+            } else if (embeddingStore instanceof MilvusEmbeddingStore) {
+                MilvusEmbeddingStore milvusEmbeddingStore = (MilvusEmbeddingStore) embeddingStore;
+                Collection<String> queryIds = queries
+                        .stream()
+                        .map(textSegment -> StringUtils.isEmpty(textSegment.metadata("modelId"))
+                                ? MD5Util.getMD5(textSegment.text(),false, MD5Util.BIT32)
+                                : textSegment.metadata("modelId") + MD5Util.getMD5(textSegment.text(),false, MD5Util.BIT32))
+                        .filter(Objects::nonNull).collect(Collectors.toList());
+                if (CollectionUtils.isNotEmpty(queryIds)) {
+                    milvusEmbeddingStore.removeAll(queryIds);
+                }
+
             }
         } catch (Exception e) {
             log.error("deleteQuery error,collectionName:{},queries:{}", collectionName, queries);
@@ -134,7 +156,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
         List<Retrieval> retrievals = result.matches().stream()
                 .map(this::convertToRetrieval)
-                .sorted(Comparator.comparingDouble(Retrieval::getDistance).reversed())
+                .sorted(Comparator.comparingDouble(Retrieval::getScore).reversed())
                 .limit(num)
                 .collect(Collectors.toList());
 
@@ -150,6 +172,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         retrieval.setDistance(1 - embeddingMatch.score());
         retrieval.setId(TextSegmentConvert.getQueryId(embedded));
         retrieval.setQuery(embedded.text());
+        retrieval.setScore(embeddingMatch.score());
 
         Map<String, Object> metadata = new HashMap<>();
         if (Objects.nonNull(embedded) && MapUtils.isNotEmpty(embedded.metadata().toMap())) {
